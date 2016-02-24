@@ -1,6 +1,6 @@
 var chai = require('chai'),
     chai_promise = require('chai-as-promised'),
-    GithubApi = require('../..');
+    GithubApi = require('../../examples/github_api');
 
 var should = chai.should();
 chai.use(chai_promise);

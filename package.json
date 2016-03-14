@@ -10,20 +10,20 @@
   },
   "main": "lib",
   "devDependencies": {
-    "chai": "^1.9.2",
-    "chai-as-promised": "^4.1.1",
-    "coffee-script": "1.8.x",
-    "coffeelint": "*",
-    "istanbul": "*",
-    "mocha": "*",
-    "mocha-lcov-reporter": "*"
+    "ava": "^0.13.0",
+    "babel-core": "^6.6.5",
+    "babel-preset-es2015": "^6.6.0",
+    "babel-preset-stage-2": "^6.5.0",
+    "snazzy": "^3.0.0",
+    "standard": "^6.0.8"
   },
   "scripts": {
-    "test": "npm run lint && mocha",
-    "lint": "find lib/ -name '*.coffee' | xargs coffeelint",
-    "coverage": "make build; istanbul cover _mocha --report html -- -R spec && open coverage/index.html && make unbuild"
+    "coverage": "NODE_ENV=test nyc --reporter=html ava --require babel-core/register --verbose --serial && open coverage/index.html",
+    "lint": "standard --verbose | snazzy",
+    "pretest": "npm run lint -s",
+    "test": "NODE_ENV=test ava --require babel-core/register --verbose --serial"
   },
   "dependencies": {
-    "axios": "0.9.x"
+    "rest": "^1.3.1"
   }
 }

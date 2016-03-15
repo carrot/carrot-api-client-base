@@ -2,64 +2,19 @@
 
 [![Build Status](https://travis-ci.org/carrot/carrot-api-client-base.svg?branch=master)](https://travis-ci.org/carrot/carrot-api-client-base)
 
-Carrot API Client Base is a scaffolding project built on top of [axios](https://github.com/mzabriskie/axios) that helps rapidly build promise based API clients that follow [Carrots Restful API Spec](https://github.com/carrot/restful-api-spec).
+Carrot API Client Base is a scaffolding project built on top of [rest.js](https://github.com/cujojs/rest) that helps rapidly build promise based API clients that follow [Carrots Restful API Spec](https://github.com/carrot/restful-api-spec).
 
-Before getting into anything, you should check out the [Github API](/examples/github_api.coffee) file to get a general idea of how easy it is to build out a client.  That file provides a fully functioning API client.
+Before getting into anything, you should check out the [Carrot API Node Client](https://github.com/carrot/carrot-api-node) file to get a general idea of how easy it is to build out a full client.
 
 # Usage
 
 ## Defining the Client
 
-To create a new API client, you're first going to want to start by extending the `RestApi` class, defined in the `lib/rest_api.coffee` file.
-
-Your new class file will look something like this:
-
-> Note: all code snippets are written in [CoffeeScript](http://coffeescript.org/)
-
-```coffeescript
-RestApi = require('../lib/rest_api')
-BaseModel = require('../lib/models/base_model')
-OneToManyModel = require('../lib/models/one_to_many_model')
-
-class GithubApi extends RestApi
-
-  constructor: () ->
-    super("https://api.github.com")
-
-  prepare_models: (client) ->
-    @users = new BaseModel(client, 'users')
-    @users_repos = new OneToManyModel(client, 'users', 'repos')
-
-module.exports = GithubApi
-```
-
-#### The Constructor
-
-In the constructor, we pass along the API base URL to our super class.
+To create a new API client, simply rename `RestAPI` to the name of your actual API, then in `lib/config.js`, enter the URL for your rest API. By default, the staging environment is selected. With the env set to `production` or `test`, it will use the appropriate links.
 
 #### Prepare Models
 
 This method allows you to build your model endpoints, which are defined by [this spec](https://github.com/carrot/restful-api-spec#determine-interface-model-types).
-
-#### Transform Request
-
-It's not illustrated above, but there is another method you can override from `RestApi` called `transform_request`.
-
-This allows changes to the request data before it is sent to the server.
-
-Here is some example usage of `transform_request` that converts a JSON payload request (axios's default) to application/x-www-form-urlencoded:
-
-```coffeescript
-# ...
-class GithubApi extends RestApi
-  # ...
-  transform_request: (data, headers) ->
-    str = []
-    for p of data
-      if data.hasOwnProperty(p) and data[p]
-        str.push encodeURIComponent(p) + '=' + encodeURIComponent(data[p])
-     str.join '&'
-```
 
 ## Using the Client
 
@@ -67,8 +22,18 @@ Now that we've defined our client, we can start using it.
 
 First, you'll need to create an instance of your API client:
 
-```coffeescript
-var API = new MyApi().build();
+```js
+let API = new MyApi("apiKey")
+```
+
+The `apiKey` parameter is optional and you may decide to use it or not, depending on your use case. From the API's perspective, adding the api key parameter will apply an `Authentication` header to all of your requests (so no need to add it to every request).
+
+If you have an already initialized instance with no api key, and would like to add one later, you can simply do this through the `apiKey` property on the instance at any time. For example:
+
+```js
+let API = new myAPI()
+API.apiKey = 'xxx'
+console.log('Now I can make authenticated requests!')
 ```
 
 #### Models
@@ -77,8 +42,8 @@ All endpoints must be accessed through models.
 
 After you have created an API object and have it stored in a variable (let's say API), you can access the models like this:
 
-```coffeescript
-API.model_name
+```js
+API.modelName
 ```
 
 #### Available methods
@@ -86,22 +51,19 @@ API.model_name
 In the [API Spec](https://github.com/carrot/restful-api-spec), we'll notice up to five different types of methods documented per model. This is how they map to this library:
 
 ```
-Create  =>  .fetch
-Index   =>  .bulk_fetch
-Show    =>  .fetch
+Create  =>  .create
+Index   =>  .index
+Show    =>  .get
 Update  =>  .update
 Delete  =>  .delete
 ```
 
 #### Example Method Call
 
-```coffeescript
-API.users_repos.bulk_fetch('BrandonRomano')
-  .then (res) ->
-    repos = res.data
-    console.log(repos)
-  .catch (err) ->
-    console.log(err)
+```js
+API.usersRepos.index('BrandonRomano')
+  .then(console.log)
+  .catch(console.error)
 ```
 
 #### Segment Parameters
@@ -110,8 +72,8 @@ Looking at the example above, we note that the URL segment parameter id is passe
 
 If we had two URL segment parameters, the endpoint would look something like this:
 
-```coffeescript
-API.example_model.fetch(1, 2)
+```js
+API.exampleModel.fetch(1, 2)
   .then (res) ->
     # TODO
   .catch (err) ->
@@ -120,9 +82,22 @@ API.example_model.fetch(1, 2)
 
 #### All Other Parameters
 
-All other parameters after the segment parameters follow the same structure that [axios](https://github.com/mzabriskie/axios) takes, so please refer to their documentation.
+Any other parameters after the segment parameters follow this structure:
 
-You can think of the segment parameters as the replacement of the url parameters in all axios calls.
+- `GET` methods: segment params, query string params, _overrides_
+- `POST` methods: segment params, request entity, _overrides_
+- `PUT` methods: segment params, request entity, _overrides_
+- `DELETE` methods: segment params, _overrides_
+
+The `overrides` in the final parameter slot for each method accepts an optional object that allows you to override any part of the request that you'd like to modify. This object is merged with priority over the existing params then passed into [rest.js](https://github.com/cujojs/rest). You can find a list of [the potential properties you can use in the overrides object here](https://github.com/cujojs/rest/blob/master/docs/interfaces.md#common-request-properties). In practice, you will probably never need to use this, but in case you do, you are able to modify the request in any way you'd like before it's sent using this argument.
+
+## Deploying
+
+Since this project is written in ES2015, it needs to be compiled before it's published. To compile, run `make build`, and to revert run `make unbuild`. For a one shot publish, you can run `make publish`, and it will build, publish to npm, then unbuild back to default.
+
+## Testing
+
+This library is set up by default to use [ava](https://github.com/sindresorhus/ava) for tests. Ava is a fairly simple test runner that works nicely with es6. To run tests, use `npm test`. To generate code coverage, use `npm run coverage`.
 
 # License
 
